@@ -1,4 +1,7 @@
-$DIST_LIST='windows/arm64', 'linux/arm64'
+$DIST_LIST=(
+  'windows/386', 'windows/arm','windows/arm64', 'windows/amd64',
+  'linux/386', 'linux/arm','linux/arm64', 'linux/amd64'
+)
 
 $ownPath = split-Path -Parent (split-Path -Parent $MyInvocation.MyCommand.Path)
 
