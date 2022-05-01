@@ -164,7 +164,7 @@ func (app *App) opening(finishFunc func()) {
 	if err != nil {
 		panic(err)
 	}
-	for offset := 0.0; offset < 1; offset += 0.01 {
+	for offset := 0.0; offset < 3; offset += 0.01 {
 		resultText := ""
 		for _, line := range strings.Split(splashText, "\n") {
 			lineLength := len(line)
