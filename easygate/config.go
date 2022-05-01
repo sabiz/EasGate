@@ -13,12 +13,14 @@ const (
 )
 
 type Config struct {
-	Proxy Proxy `mapstructure:"proxy"`
-	Serve Serve `mapstructure:"serve"`
+	Proxy    Proxy  `mapstructure:"proxy"`
+	Serve    Serve  `mapstructure:"serve"`
+	LogLevel string `mapstructure:"log_level"`
 }
 
 type Serve struct {
-	ListenPort string `mapstructure:"listen_port"`
+	ListenPort  string `mapstructure:"listen_port"`
+	PacFilePath string `mapstructure:"pac_file_path"`
 }
 
 type Proxy struct {
@@ -39,6 +41,8 @@ func LoadConfig() (*Config, error) {
 	viper.SetDefault("proxy.user_name", "")
 	viper.SetDefault("proxy.password", "")
 	viper.SetDefault("serve.listen_port", "44380")
+	viper.SetDefault("serve.pac_file_path", "")
+	viper.SetDefault("log_level", "DEBUG")
 
 	viper.SafeWriteConfig()
 	err := viper.ReadInConfig()
@@ -53,11 +57,13 @@ func LoadConfig() (*Config, error) {
 	return &config, nil
 }
 
-func (config Config) Save() {
+func (config *Config) Save() {
 	viper.Set("proxy.url", config.Proxy.Url)
 	viper.Set("proxy.user_name", config.Proxy.UserName)
 	viper.Set("proxy.password", config.Proxy.Password)
 	viper.Set("serve.listen_port", config.Serve.ListenPort)
+	viper.Set("serve.pac_file_path", config.Serve.PacFilePath)
+	viper.Set("log_level", config.LogLevel)
 	viper.WriteConfig()
 }
 
