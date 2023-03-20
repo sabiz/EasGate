@@ -22,7 +22,6 @@ const (
 	splashVersion   = "⛩️ v0.1.0 ⛩️"
 	serverStatusOff = "Status: [#D3DEDC:#7C99AC:-]  OFF  [-:-:-]"
 	serverStatusOn  = "Status: [#B4E197:#4E944F:-]  O N  [-:-:-]"
-	maxLogViewCount = 3000
 )
 
 type Ui struct {
@@ -30,6 +29,7 @@ type Ui struct {
 	page          *tview.Pages
 	logView       *tview.TextView
 	serviceStatus *tview.TextView
+	messageArea   *tview.TextView
 	splash        *tview.TextView
 }
 
@@ -52,77 +52,8 @@ func NewApp() *App {
 	app.server = NewServer(app.config)
 
 	app.ui.tview = tview.NewApplication()
-	app.ui.tview.EnableMouse(true)
-
-	configForm := tview.NewForm().
-		AddInputField("Proxy - URL", app.config.Proxy.Url, 50, nil, app.makeChangeInput(&app.config.Proxy.Url)).
-		AddInputField("Proxy - User name", app.config.Proxy.UserName, 25, nil, app.makeChangeInput(&app.config.Proxy.UserName)).
-		AddPasswordField("Proxy - Password", app.config.Proxy.Password, 25, '*', app.makeChangeInput(&app.config.Proxy.Password)).
-		AddInputField("Service - Port", app.config.Serve.ListenPort, 15, nil, app.makeChangeInput(&app.config.Serve.ListenPort)).
-		AddInputField("Service - Pac file path", app.config.Serve.PacFilePath, 75, nil, app.makeChangeInput(&app.config.Serve.PacFilePath))
-
-	configFrame := tview.NewFrame(configForm).
-		AddText("Configurations are automatically saved.", true, tview.AlignLeft, tcell.ColorDefault).
-		AddText("You need restart app, If you changed configuration.", true, tview.AlignLeft, tcell.ColorDefault).
-		AddText("ESC: Back | Tab: Move", false, tview.AlignLeft, tcell.ColorDefault)
-	configFrame.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-		if event.Key() == tcell.KeyEscape {
-			app.ui.page.SwitchToPage("MAIN")
-		} else if event.Key() == tcell.KeyRune {
-		}
-		return event
-	})
-
-	app.ui.serviceStatus = tview.NewTextView().SetDynamicColors(true).
-		SetText(serverStatusOff)
-
-	messageArea := tview.NewTextView().SetDynamicColors(true).SetText("").SetTextColor(tcell.ColorRed)
-
-	app.ui.logView = tview.NewTextView().
-		SetWrap(true).
-		SetWordWrap(true).
-		SetScrollable(true).
-		SetChangedFunc(func() {
-			if app.ui.logView.GetOriginalLineCount() > maxLogViewCount {
-				app.ui.logView.SetText("log clear...\n")
-			}
-			app.ui.tview.Draw()
-		})
-	app.ui.logView.SetTextColor(tcell.NewHexColor(0xE8D0F2)).SetBackgroundColor(tcell.NewHexColor(0x554A59))
-
-	flexArea := tview.NewFlex().SetDirection(tview.FlexRow).
-		AddItem(
-			tview.NewFlex().
-				AddItem(app.ui.serviceStatus, 20, 1, true).
-				AddItem(messageArea, 0, 1, false), 1, 1, false).
-		AddItem(app.ui.logView, 0, 1, true)
-	mainFrame := tview.NewFrame(flexArea).
-		AddText("ESC: Exit | Space: ON/OFF | F1: Configuration", false, tview.AlignLeft, tcell.ColorDefault)
-	mainFrame.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-		messageArea.SetText("")
-		switch event.Key() {
-		case tcell.KeyF1:
-			if app.server.IsRunning() {
-				messageArea.SetText("You need stop service!!")
-				return event
-			}
-			app.ui.page.SwitchToPage("CONFIG")
-		case tcell.KeyEscape:
-			app.ui.tview.Stop()
-		case tcell.KeyRune:
-			switch event.Rune() {
-			case ' ':
-				if app.server.IsRunning() {
-					app.server.Stop()
-					app.ui.serviceStatus.SetText(serverStatusOff)
-				} else {
-					app.server.Start(&app.config.Serve)
-					app.ui.serviceStatus.SetText(serverStatusOn)
-				}
-			}
-		}
-		return event
-	})
+	configFrame := app.createConfigFrame()
+	mainFrame := app.createMainFrame()
 
 	app.ui.splash = tview.NewTextView().
 		SetDynamicColors(true).
@@ -190,4 +121,83 @@ func (app *App) makeChangeInput(ptr *string) func(string) {
 		*ptr = text
 		app.config.Save()
 	}
+}
+
+func (app *App) updateLogView() {
+	app.ui.tview.Draw()
+}
+
+func (app *App) createMainFrame() *tview.Frame {
+	app.ui.serviceStatus = tview.NewTextView().SetDynamicColors(true).
+		SetText(serverStatusOff)
+
+	app.ui.messageArea = tview.NewTextView().SetDynamicColors(true).SetText("").SetTextColor(tcell.ColorRed)
+
+	app.ui.logView = tview.NewTextView().
+		SetWrap(true).
+		SetWordWrap(true).
+		SetScrollable(true).
+		SetChangedFunc(app.updateLogView)
+	app.ui.logView.SetTextColor(tcell.NewHexColor(0xE8D0F2)).SetBackgroundColor(tcell.NewHexColor(0x554A59))
+	app.ui.logView.SetMaxLines(app.config.LogViewBuffer)
+
+	flexArea := tview.NewFlex().SetDirection(tview.FlexRow).
+		AddItem(
+			tview.NewFlex().
+				AddItem(app.ui.serviceStatus, 20, 1, true).
+				AddItem(app.ui.messageArea, 0, 1, false), 1, 1, false).
+		AddItem(app.ui.logView, 0, 1, true)
+	mainFrame := tview.NewFrame(flexArea).
+		AddText("ESC: Exit | Space: ON/OFF | F1: Configuration", false, tview.AlignLeft, tcell.ColorDefault)
+	mainFrame.SetInputCapture(app.onKeyInMainFrame)
+	return mainFrame
+}
+
+func (app *App) onKeyInMainFrame(event *tcell.EventKey) *tcell.EventKey {
+	app.ui.messageArea.SetText("")
+	switch event.Key() {
+	case tcell.KeyF2:
+		if app.server.IsRunning() {
+			app.ui.messageArea.SetText("You need stop service!!")
+			return event
+		}
+		app.ui.page.SwitchToPage("CONFIG")
+	case tcell.KeyEscape:
+		app.ui.tview.Stop()
+	case tcell.KeyRune:
+		switch event.Rune() {
+		case ' ':
+			if app.server.IsRunning() {
+				app.server.Stop()
+				app.ui.serviceStatus.SetText(serverStatusOff)
+			} else {
+				app.server.Start(&app.config.Serve)
+				app.ui.serviceStatus.SetText(serverStatusOn)
+			}
+		}
+	}
+	return event
+}
+
+func (app *App) createConfigFrame() *tview.Frame {
+	configForm := tview.NewForm().
+		AddInputField("Proxy - URL", app.config.Proxy.Url, 50, nil, app.makeChangeInput(&app.config.Proxy.Url)).
+		AddInputField("Proxy - User name", app.config.Proxy.UserName, 25, nil, app.makeChangeInput(&app.config.Proxy.UserName)).
+		AddPasswordField("Proxy - Password", app.config.Proxy.Password, 25, '*', app.makeChangeInput(&app.config.Proxy.Password)).
+		AddInputField("Service - Port", app.config.Serve.ListenPort, 15, nil, app.makeChangeInput(&app.config.Serve.ListenPort)).
+		AddInputField("Service - Pac file path", app.config.Serve.PacFilePath, 75, nil, app.makeChangeInput(&app.config.Serve.PacFilePath))
+
+	configFrame := tview.NewFrame(configForm).
+		AddText("Configurations are automatically saved.", true, tview.AlignLeft, tcell.ColorDefault).
+		AddText("You need restart app, If you changed configuration.", true, tview.AlignLeft, tcell.ColorDefault).
+		AddText("ESC: Back | Tab: Move", false, tview.AlignLeft, tcell.ColorDefault)
+	configFrame.SetInputCapture(app.onKeyInConfigFrame)
+	return configFrame
+}
+
+func (app *App) onKeyInConfigFrame(event *tcell.EventKey) *tcell.EventKey {
+	if event.Key() == tcell.KeyEscape {
+		app.ui.page.SwitchToPage("MAIN")
+	}
+	return event
 }
