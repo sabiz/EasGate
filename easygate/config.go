@@ -13,9 +13,10 @@ const (
 )
 
 type Config struct {
-	Proxy    Proxy  `mapstructure:"proxy"`
-	Serve    Serve  `mapstructure:"serve"`
-	LogLevel string `mapstructure:"log_level"`
+	Proxy         Proxy  `mapstructure:"proxy"`
+	Serve         Serve  `mapstructure:"serve"`
+	LogLevel      string `mapstructure:"log_level"`
+	LogViewBuffer int    `mapstructure:"log_view_buffer"`
 }
 
 type Serve struct {
@@ -43,16 +44,17 @@ func LoadConfig() (*Config, error) {
 	viper.SetDefault("serve.listen_port", "44380")
 	viper.SetDefault("serve.pac_file_path", "")
 	viper.SetDefault("log_level", "DEBUG")
+	viper.SetDefault("log_view_buffer", 256)
 
 	viper.SafeWriteConfig()
 	err := viper.ReadInConfig()
 	if err != nil {
-		return nil, fmt.Errorf("Can't read config: %s\n", err)
+		return nil, fmt.Errorf("can't read config: %s", err)
 	}
 	var config Config
 	err = viper.Unmarshal(&config)
 	if err != nil {
-		return nil, fmt.Errorf("Can't load config: %s\n", err)
+		return nil, fmt.Errorf("can't load config: %s", err)
 	}
 	return &config, nil
 }
@@ -64,6 +66,7 @@ func (config *Config) Save() {
 	viper.Set("serve.listen_port", config.Serve.ListenPort)
 	viper.Set("serve.pac_file_path", config.Serve.PacFilePath)
 	viper.Set("log_level", config.LogLevel)
+	viper.Set("log_view_buffer", config.LogViewBuffer)
 	viper.WriteConfig()
 }
 
