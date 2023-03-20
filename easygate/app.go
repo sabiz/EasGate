@@ -19,7 +19,7 @@ const (
 		"| |__| (_| \\__ | |_| | |_| | (_| | ||  __/" + "\n" +
 		"|_____\\__,_|___/\\__, |\\____|\\__,_|\\__\\___|" + "\n" +
 		"                |___/                     " + "\n"
-	splashVersion   = "⛩️ v0.1.0 ⛩️"
+	splashVersion   = "⛩️ v0.1.1 ⛩️"
 	serverStatusOff = "Status: [#D3DEDC:#7C99AC:-]  OFF  [-:-:-]"
 	serverStatusOn  = "Status: [#B4E197:#4E944F:-]  O N  [-:-:-]"
 )
